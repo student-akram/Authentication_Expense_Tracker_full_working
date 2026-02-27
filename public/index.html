@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Expense Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+    <h2>Daily Expense Tracker</h2>
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+</div>
+
+        <form id="expenseForm">
+            <input type="number" id="amount" placeholder="Enter Amount" required />
+            <input type="text" id="description" placeholder="Enter Description" required /><br />
+
+            <label for="category">Category:</label>
+            <select id="category">
+                <option value="Food">Food</option>
+                <option value="Petrol">Petrol</option>
+                <option value="Salary">Salary</option>
+                <option value="Shopping">Shopping</option>
+            </select>
+
+            <button type="submit">Add Expense</button>
+            
+        </form>
+
+        <h3>Expenses List</h3>
+        <ul id="expenseList"></ul>
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
