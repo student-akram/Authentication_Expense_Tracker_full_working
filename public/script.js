@@ -1,73 +1,112 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-    const form = document.getElementById('expenseForm');
-    const list = document.getElementById('expenseList');
-    const logoutBtn = document.getElementById('logoutBtn');
+    // ==========================
+    // 🔐 CHECK TOKEN (ONLY FOR DASHBOARD)
+    // ==========================
+    const token = localStorage.getItem("token");
 
-    // 🔐 Check if user is logged in
-    const token = localStorage.getItem('token');
+    const isDashboard = document.getElementById("expenseForm");
 
-    if (!token) {
+    if (isDashboard && !token) {
         window.location.href = "/login.html";
         return;
     }
 
     // ==========================
+    // FORGOT PASSWORD
+    // ==========================
+    const forgotForm = document.getElementById("forgot-form");
+
+    if (forgotForm) {
+        forgotForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+
+            try {
+                const response = await axios.post(
+                    "http://localhost:3100/password/forgotpassword",
+                    { email }
+                );
+
+                alert(response.data.message);
+            } catch (err) {
+                console.log("Forgot password error:", err);
+                alert("Something went wrong");
+            }
+        });
+    }
+
+    // ==========================
     // LOGOUT
     // ==========================
+    const logoutBtn = document.getElementById("logoutBtn");
+
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('token');  // remove JWT
-            window.location.replace("/login.html");  // prevent back navigation
+        logoutBtn.addEventListener("click", () => {
+            localStorage.removeItem("token");
+            window.location.href = "/login.html";
         });
     }
 
     // ==========================
     // ADD EXPENSE
     // ==========================
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    const form = document.getElementById("expenseForm");
+    const list = document.getElementById("expenseList");
 
-    const amount = document.getElementById('amount').value;
-    const description = document.getElementById('description').value;
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    try {
-        const response = await fetch('/expense/add-expense', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                amount,
-                description,
-                aiProvider: "gemini"   // 🔥 AI enabled
-            })
+            const amount = document.getElementById("amount").value;
+            const description = document.getElementById("description").value;
+
+            try {
+                const response = await fetch("/expense/add-expense", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    },
+                    body: JSON.stringify({ amount, description })
+                });
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.message);
+                }
+
+                form.reset();
+                loadExpenses();
+
+            } catch (error) {
+                console.log("Add expense error:", error);
+                alert(error.message);
+            }
         });
-
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || "Error adding expense");
-        }
-
-        form.reset();
-        loadExpenses();
-
-    } catch (error) {
-        console.log("Error adding expense:", error);
-        alert(error.message);
     }
-});
+
     // ==========================
     // LOAD EXPENSES
     // ==========================
     async function loadExpenses() {
         try {
-            const response = await fetch('/expense/get-expenses', {
+            const response = await fetch("/expense/get-expenses", {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 }
             });
+
+            if (response.status === 401) {
+                handleUnauthorized();
+                return;
+            }
 
             if (!response.ok) {
                 throw new Error("Failed to fetch expenses");
@@ -77,12 +116,12 @@ form.addEventListener('submit', async (e) => {
             list.innerHTML = "";
 
             data.forEach(exp => {
-                const li = document.createElement('li');
+                const li = document.createElement("li");
                 li.innerHTML = `
                     <div>
                         <strong>₹${exp.amount}</strong> - ${exp.description}
                         <br>
-                        <small>${exp.category}</small>
+                        <small>${exp.category || ""}</small>
                     </div>
                     <button onclick="deleteExpense(${exp.id})">Delete</button>
                 `;
@@ -90,7 +129,7 @@ form.addEventListener('submit', async (e) => {
             });
 
         } catch (error) {
-            console.log("Error fetching expenses:", error);
+            console.log("Fetch expense error:", error);
         }
     }
 
@@ -100,23 +139,36 @@ form.addEventListener('submit', async (e) => {
     window.deleteExpense = async function (id) {
         try {
             const response = await fetch(`/expense/delete-expense/${id}`, {
-                method: 'DELETE',
+                method: "DELETE",
                 headers: {
-                     'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 }
             });
 
+            if (response.status === 401) {
+                handleUnauthorized();
+                return;
+            }
+
             if (!response.ok) {
-                throw new Error("Failed to delete expense");
+                throw new Error("Delete failed");
             }
 
             loadExpenses();
 
         } catch (error) {
-            console.log("Error deleting expense:", error);
+            console.log("Delete error:", error);
         }
     };
 
-    // 🚀 Load expenses on page load
-    loadExpenses();
+    function handleUnauthorized() {
+        alert("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        window.location.href = "/login.html";
+    }
+
+    if (form) {
+        loadExpenses();
+    }
+
 });
