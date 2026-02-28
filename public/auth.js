@@ -9,8 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            console.log("Submitting...");
-
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -23,10 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const data = await response.json();
-                console.log(data);
-
                 alert("Signup Successful!");
-                window.location.href = "index.html";
+                window.location.href = "login.html";
 
             } catch (err) {
                 console.log("Signup Error:", err);
@@ -35,32 +31,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ================= LOGIN =================
-    // ================= LOGIN =================
-const loginForm = document.getElementById('loginForm');
+    const loginForm = document.getElementById('loginForm');
 
-if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-        const res = await fetch('/user/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
+            const res = await fetch('/user/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                localStorage.setItem('token', data.token);
+                window.location.href = '/index.html';
+            } else {
+                alert(data.message);
+            }
         });
+    }
 
-        const data = await res.json();
+    // ================= FORGOT PASSWORD =================
+    const forgotForm = document.getElementById("forgot-form");
 
-        if (res.ok) {
-            localStorage.setItem('token', data.token);
-            window.location.href = '/index.html';
-        } else {
-            alert(data.message);
-        }
-    });
-}
+    if (forgotForm) {
+        forgotForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+
+            try {
+                const response = await axios.post(
+    "http://localhost:3100/password/forgotpassword",
+    { email }
+);
+
+                alert(response.data.message);
+
+            } catch (error) {
+                console.log("Forgot password error:", error);
+                messageDiv.textContent = "If the email is registered, a reset link has been sent.";
+messageDiv.className = "message success";
+            }
+        });
+    }
+
 });
