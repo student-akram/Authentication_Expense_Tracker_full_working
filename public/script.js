@@ -10,56 +10,95 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("expenseForm");
     const list = document.getElementById("expenseList");
 
-    // ==========================
-    // 🔐 CHECK TOKEN (Dashboard Only)
-    // ==========================
+    // ================= STATUS MESSAGE AFTER PAYMENT =================
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+
+    if (status === "success") {
+        alert("🎉 Payment Successful! You are now Premium.");
+        window.history.replaceState({}, document.title, "/index.html");
+    }
+
+    if (status === "failed") {
+        alert("❌ Payment Failed.");
+        window.history.replaceState({}, document.title, "/index.html");
+    }
+
+    // 🔐 CHECK TOKEN
     if (form && !token) {
         window.location.href = "/login.html";
         return;
     }
 
-    const pageSizeSelect = document.getElementById("pageSizeSelect");
+    // ================= DOWNLOAD BUTTON =================
+    const downloadBtn = document.getElementById("downloadBtn");
 
-    if (pageSizeSelect) {
-        pageSizeSelect.value = pageSize;
-
-        pageSizeSelect.addEventListener("change", () => {
-            pageSize = parseInt(pageSizeSelect.value);
-            localStorage.setItem("pageSize", pageSize);
-            currentPage = 1;
-            loadExpenses(currentPage);
-        });
-    }
-
-    // ==========================
-    // FORGOT PASSWORD
-    // ==========================
-    const forgotForm = document.getElementById("forgot-form");
-
-    if (forgotForm) {
-        forgotForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            const email = document.getElementById("email").value;
-
+    if (downloadBtn) {
+        downloadBtn.addEventListener("click", async () => {
             try {
-                const response = await axios.post(
-                    "/password/forgotpassword",
-                    { email }
-                );
+                const response = await fetch("/premium/download", {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
 
-                alert(response.data.message);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.message);
+                    return;
+                }
+
+                window.location.href = data.fileURL;
 
             } catch (err) {
-                console.log("Forgot password error:", err);
-                alert("If the email is registered, a reset link has been sent.");
+                console.error("Download error:", err);
             }
         });
     }
 
-    // ==========================
-    // LOGOUT
-    // ==========================
+    // ================= BUY PREMIUM =================
+    const buyPremiumBtn = document.getElementById("buyPremiumBtn");
+
+    if (buyPremiumBtn) {
+        buyPremiumBtn.addEventListener("click", async () => {
+            try {
+                const response = await fetch("/payment/create-order", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.message || "Unable to create order");
+                    return;
+                }
+
+                if (!data.payment_session_id) {
+                    alert("Invalid payment session");
+                    return;
+                }
+
+                const cashfree = Cashfree({
+                    mode: "sandbox"
+                });
+
+                cashfree.checkout({
+                    paymentSessionId: data.payment_session_id,
+                    redirectTarget: "_self"
+                });
+
+            } catch (err) {
+                console.error("Payment error:", err);
+                alert("Payment initialization failed");
+            }
+        });
+    }
+
+    // ================= LOGOUT =================
     const logoutBtn = document.getElementById("logoutBtn");
 
     if (logoutBtn) {
@@ -69,15 +108,14 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ==========================
-    // ADD EXPENSE
-    // ==========================
+    // ================= ADD EXPENSE =================
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const amount = document.getElementById("amount").value;
             const description = document.getElementById("description").value;
+            const category = document.getElementById("category").value;
 
             try {
                 const response = await fetch("/expense/add-expense", {
@@ -86,13 +124,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({ amount, description })
+                    body: JSON.stringify({ amount, description, category })
                 });
-
-                if (response.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
 
                 if (!response.ok) {
                     const errData = await response.json();
@@ -103,15 +136,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadExpenses(1);
 
             } catch (error) {
-                console.log("Add expense error:", error);
                 alert(error.message);
             }
         });
     }
 
-    // ==========================
-    // LOAD EXPENSES (PAGINATION)
-    // ==========================
+    // ================= LOAD EXPENSES =================
     async function loadExpenses(page = 1) {
         try {
             currentPage = page;
@@ -122,31 +152,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
-            if (response.status === 401) {
-                handleUnauthorized();
-                return;
-            }
-
             const data = await response.json();
-
-            if (page > data.totalPages && data.totalPages > 0) {
-                currentPage = data.totalPages;
-                loadExpenses(currentPage);
-                return;
-            }
 
             list.innerHTML = "";
 
             data.expenses.forEach(exp => {
+
                 const li = document.createElement("li");
+                li.className = "expense-item";
+
                 li.innerHTML = `
                     <div>
                         <strong>₹${exp.amount}</strong> - ${exp.description}
                         <br>
                         <small>${exp.category || ""}</small>
                     </div>
-                    <button onclick="deleteExpense(${exp.id})">Delete</button>
+                    <button class="delete-btn" onclick="deleteExpense(${exp.id})">Delete</button>
                 `;
+
                 list.appendChild(li);
             });
 
@@ -157,26 +180,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // ==========================
-    // DELETE EXPENSE
-    // ==========================
+    // ================= DELETE =================
     window.deleteExpense = async function (id) {
         try {
-            const response = await fetch(`/expense/delete-expense/${id}`, {
+            await fetch(`/expense/delete-expense/${id}`, {
                 method: "DELETE",
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
             });
-
-            if (response.status === 401) {
-                handleUnauthorized();
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error("Delete failed");
-            }
 
             loadExpenses(currentPage);
 
@@ -185,50 +197,22 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // ==========================
-    // PAGINATION UI
-    // ==========================
+    // ================= PAGINATION =================
     function createPagination(totalPages, currentPage) {
         const pagination = document.getElementById("pagination");
         pagination.innerHTML = "";
 
-        if (currentPage > 1) {
-            const prev = document.createElement("button");
-            prev.innerText = "Previous";
-            prev.classList.add("page-btn");
-            prev.onclick = () => loadExpenses(currentPage - 1);
-            pagination.appendChild(prev);
-        }
-
         for (let i = 1; i <= totalPages; i++) {
             const btn = document.createElement("button");
             btn.innerText = i;
-            btn.classList.add("page-btn");
 
             if (i === currentPage) {
-                btn.classList.add("active-page");
+                btn.classList.add("active");
             }
 
             btn.onclick = () => loadExpenses(i);
             pagination.appendChild(btn);
         }
-
-        if (currentPage < totalPages) {
-            const next = document.createElement("button");
-            next.innerText = "Next";
-            next.classList.add("page-btn");
-            next.onclick = () => loadExpenses(currentPage + 1);
-            pagination.appendChild(next);
-        }
-    }
-
-    // ==========================
-    // HANDLE SESSION EXPIRE
-    // ==========================
-    function handleUnauthorized() {
-        alert("Session expired. Please login again.");
-        localStorage.removeItem("token");
-        window.location.href = "/login.html";
     }
 
     if (form) {

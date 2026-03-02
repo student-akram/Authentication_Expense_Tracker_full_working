@@ -154,3 +154,139 @@ li button:hover {
   color: white;
   font-weight: bold;
 }
+.add-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #4CAF50, #43a047);
+    color: white;
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+}
+
+.add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    font-size: 13px;
+    padding: 6px 12px;
+}
+
+.logout-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(231, 76, 60, 0.4);
+}
+
+
+.premium-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.premium-btn {
+    background-color: #f39c12;
+    color: white;
+}
+
+.download-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.expense-item {
+    background: #f7f7f7;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    font-size: 13px;
+    padding: 6px 12px;
+}
+
+.delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(231, 76, 60, 0.4);
+}
+
+/* Premium Section */
+.premium-actions-bottom {
+    margin-top: 25px;
+    display: flex;
+    gap: 12px;
+}
+
+.premium-btn,
+.download-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+/* Buy Premium */
+.premium-btn {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3);
+}
+
+.premium-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(243, 156, 18, 0.4);
+}
+
+/* Download */
+.download-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+}
+
+/* Pagination Styling */
+#pagination {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+#pagination button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    background-color: #ecf0f1;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+#pagination button:hover {
+    background-color: #d0d7de;
+}
+
+#pagination button.active {
+    background-color: #4CAF50;
+    color: white;
+}

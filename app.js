@@ -5,6 +5,7 @@ const sequelize = require('./config/database');
 
 const User = require('./models/user');
 const Expense = require('./models/expense');
+const Order = require('./models/order');
 const ForgotPasswordRequests = require('./models/forgotPasswordRequests');
 const passwordRoutes = require("./routes/password");
 
@@ -23,6 +24,8 @@ app.use(express.static('public'));
 app.use('/user', require('./routes/userRoutes'));
 app.use('/expense', require('./routes/expenseRoutes'));
 app.use("/password", passwordRoutes);
+app.use("/premium", require("./routes/premiumRoutes"));
+app.use("/payment", require("./routes/paymentRoute"));
 
 sequelize.sync().then(() => {
     console.log("Database connected successfully");
