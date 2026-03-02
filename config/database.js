@@ -1,14 +1,14 @@
 const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
-// Create Sequelize instance
 const sequelize = new Sequelize(
-  'expense_details',   // 🔹 Your database name
-  'root',            // 🔹 MySQL username
-  'root',            // 🔹 MySQL password
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
   {
-    host: 'localhost',
-    dialect: 'mysql',
-    
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT || 'mysql',
+    logging: false   // disables SQL query logs in production
   }
 );
 

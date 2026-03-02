@@ -1,15 +1,34 @@
+let currentPage = 1;
+
+let pageSize = localStorage.getItem("pageSize")
+    ? parseInt(localStorage.getItem("pageSize"))
+    : 10;
+
 document.addEventListener("DOMContentLoaded", () => {
 
-    // ==========================
-    // 🔐 CHECK TOKEN (ONLY FOR DASHBOARD)
-    // ==========================
     const token = localStorage.getItem("token");
+    const form = document.getElementById("expenseForm");
+    const list = document.getElementById("expenseList");
 
-    const isDashboard = document.getElementById("expenseForm");
-
-    if (isDashboard && !token) {
+    // ==========================
+    // 🔐 CHECK TOKEN (Dashboard Only)
+    // ==========================
+    if (form && !token) {
         window.location.href = "/login.html";
         return;
+    }
+
+    const pageSizeSelect = document.getElementById("pageSizeSelect");
+
+    if (pageSizeSelect) {
+        pageSizeSelect.value = pageSize;
+
+        pageSizeSelect.addEventListener("change", () => {
+            pageSize = parseInt(pageSizeSelect.value);
+            localStorage.setItem("pageSize", pageSize);
+            currentPage = 1;
+            loadExpenses(currentPage);
+        });
     }
 
     // ==========================
@@ -25,14 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 const response = await axios.post(
-                    "http://localhost:3100/password/forgotpassword",
+                    "/password/forgotpassword",
                     { email }
                 );
 
                 alert(response.data.message);
+
             } catch (err) {
                 console.log("Forgot password error:", err);
-                alert("Something went wrong");
+                alert("If the email is registered, a reset link has been sent.");
             }
         });
     }
@@ -52,9 +72,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================
     // ADD EXPENSE
     // ==========================
-    const form = document.getElementById("expenseForm");
-    const list = document.getElementById("expenseList");
-
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -67,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                        "Authorization": `Bearer ${token}`
                     },
                     body: JSON.stringify({ amount, description })
                 });
@@ -83,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 form.reset();
-                loadExpenses();
+                loadExpenses(1);
 
             } catch (error) {
                 console.log("Add expense error:", error);
@@ -93,13 +110,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================
-    // LOAD EXPENSES
+    // LOAD EXPENSES (PAGINATION)
     // ==========================
-    async function loadExpenses() {
+    async function loadExpenses(page = 1) {
         try {
-            const response = await fetch("/expense/get-expenses", {
+            currentPage = page;
+
+            const response = await fetch(`/expense/get-expenses?page=${page}&limit=${pageSize}`, {
                 headers: {
-                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    "Authorization": `Bearer ${token}`
                 }
             });
 
@@ -108,14 +127,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            if (!response.ok) {
-                throw new Error("Failed to fetch expenses");
+            const data = await response.json();
+
+            if (page > data.totalPages && data.totalPages > 0) {
+                currentPage = data.totalPages;
+                loadExpenses(currentPage);
+                return;
             }
 
-            const data = await response.json();
             list.innerHTML = "";
 
-            data.forEach(exp => {
+            data.expenses.forEach(exp => {
                 const li = document.createElement("li");
                 li.innerHTML = `
                     <div>
@@ -128,8 +150,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 list.appendChild(li);
             });
 
+            createPagination(data.totalPages, data.currentPage);
+
         } catch (error) {
-            console.log("Fetch expense error:", error);
+            console.log("Error fetching expenses:", error);
         }
     }
 
@@ -141,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch(`/expense/delete-expense/${id}`, {
                 method: "DELETE",
                 headers: {
-                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    "Authorization": `Bearer ${token}`
                 }
             });
 
@@ -154,13 +178,53 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("Delete failed");
             }
 
-            loadExpenses();
+            loadExpenses(currentPage);
 
         } catch (error) {
             console.log("Delete error:", error);
         }
     };
 
+    // ==========================
+    // PAGINATION UI
+    // ==========================
+    function createPagination(totalPages, currentPage) {
+        const pagination = document.getElementById("pagination");
+        pagination.innerHTML = "";
+
+        if (currentPage > 1) {
+            const prev = document.createElement("button");
+            prev.innerText = "Previous";
+            prev.classList.add("page-btn");
+            prev.onclick = () => loadExpenses(currentPage - 1);
+            pagination.appendChild(prev);
+        }
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.innerText = i;
+            btn.classList.add("page-btn");
+
+            if (i === currentPage) {
+                btn.classList.add("active-page");
+            }
+
+            btn.onclick = () => loadExpenses(i);
+            pagination.appendChild(btn);
+        }
+
+        if (currentPage < totalPages) {
+            const next = document.createElement("button");
+            next.innerText = "Next";
+            next.classList.add("page-btn");
+            next.onclick = () => loadExpenses(currentPage + 1);
+            pagination.appendChild(next);
+        }
+    }
+
+    // ==========================
+    // HANDLE SESSION EXPIRE
+    // ==========================
     function handleUnauthorized() {
         alert("Session expired. Please login again.");
         localStorage.removeItem("token");
@@ -168,7 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (form) {
-        loadExpenses();
+        loadExpenses(1);
     }
 
 });

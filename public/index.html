@@ -31,10 +31,21 @@
             <button type="submit">Add Expense</button>
             
         </form>
+        <div class="page-size-container">
+  <label>Show:</label>
+  <select id="pageSizeSelect" title="Select number of expenses to display per page">
+    <option value="5">5</option>
+    <option value="10">10</option>
+    <option value="20">20</option>
+    <option value="40">40</option>
+  </select>
+  <span>expenses per page</span>
+</div>
 
         <h3>Expenses List</h3>
         <ul id="expenseList"></ul>
     </div>
+    <div id="pagination"></div>
 
 
     <script src="script.js"></script>

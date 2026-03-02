@@ -9,37 +9,30 @@ const { categorizeExpense } = require("../services/aiService");
 
 
 exports.addExpense = async (req, res) => {
-
-  const t = await sequelize.transaction();
-
   try {
-    const { description, amount } = req.body;
+    const { amount, description } = req.body;
 
-    const category = await categorizeExpense(description);
+    let category;
 
-    const newExpense = await Expense.create({
+    try {
+      category = await aiService.getCategory(description);
+    } catch (error) {
+      console.log("OpenAI failed. Using fallback logic.");
+      category = "Other";  // 🔥 mandatory fallback
+    }
+
+    const expense = await Expense.create({
       amount,
       description,
       category,
-      userId: req.user.userId
-    }, { transaction: t });
-
-    await t.commit();
-
-    res.status(201).json({
-      message: "Expense added successfully",
-      data: newExpense
+      userId: req.user.id
     });
+
+    res.status(201).json({ expense });
 
   } catch (error) {
-
-    await t.rollback();
-
-    console.error("Add Expense Error:", error);
-
-    res.status(500).json({
-      message: "Error adding expense"
-    });
+    console.log("Add Expense Error:", error);
+    res.status(500).json({ message: "Failed to add expense" });
   }
 };
 
@@ -48,19 +41,27 @@ exports.addExpense = async (req, res) => {
 // =======================
 exports.getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.findAll({
-      where: {
-        userId: req.user.userId
-      }
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Expense.findAndCountAll({
+      where: { userId: req.user.id },
+      limit: limit,
+      offset: offset,
+      order: [['createdAt', 'DESC']]
     });
 
-    res.status(200).json(expenses);
-
-  } catch (err) {
-    console.log("Fetch Expense Error:", err);
-    res.status(500).json({
-      message: "Error fetching expenses"
+    res.status(200).json({
+      expenses: rows,
+      currentPage: page,
+      totalPages: Math.ceil(count / limit),
+      totalExpenses: count
     });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error fetching expenses" });
   }
 };
 

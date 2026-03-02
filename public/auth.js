@@ -21,11 +21,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const data = await response.json();
-                alert("Signup Successful!");
-                window.location.href = "login.html";
+
+                if (response.ok) {
+                    alert("Signup Successful!");
+                    window.location.href = "login.html";
+                } else {
+                    alert(data.message || "Signup failed");
+                }
 
             } catch (err) {
                 console.log("Signup Error:", err);
+                alert("Something went wrong. Please try again.");
             }
         });
     }
@@ -40,21 +46,27 @@ document.addEventListener("DOMContentLoaded", () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            const res = await fetch('/user/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            });
+            try {
+                const res = await fetch('/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
 
-            const data = await res.json();
+                const data = await res.json();
 
-            if (res.ok) {
-                localStorage.setItem('token', data.token);
-                window.location.href = '/index.html';
-            } else {
-                alert(data.message);
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    window.location.href = '/index.html';
+                } else {
+                    alert(data.message || "Login failed");
+                }
+
+            } catch (err) {
+                console.log("Login Error:", err);
+                alert("Something went wrong. Please try again.");
             }
         });
     }
@@ -70,16 +82,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 const response = await axios.post(
-    "http://localhost:3100/password/forgotpassword",
-    { email }
-);
+                    "/password/forgotpassword",   // ✅ FIXED (no localhost)
+                    { email }
+                );
 
                 alert(response.data.message);
 
             } catch (error) {
                 console.log("Forgot password error:", error);
-                messageDiv.textContent = "If the email is registered, a reset link has been sent.";
-messageDiv.className = "message success";
+                alert("If the email is registered, a reset link has been sent.");
             }
         });
     }

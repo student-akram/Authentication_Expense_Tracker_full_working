@@ -26,5 +26,7 @@ app.use("/password", passwordRoutes);
 
 sequelize.sync().then(() => {
     console.log("Database connected successfully");
-    app.listen(3100);
+    app.listen(process.env.PORT, () => {
+        console.log(`Server is running on port ${process.env.PORT}`);
+    });
 });
