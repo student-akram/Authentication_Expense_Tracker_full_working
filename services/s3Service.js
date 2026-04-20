@@ -10,11 +10,12 @@ exports.uploadToS3 = async (data, filename) => {
     });
 
     const params = {
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: filename,
-        Body: data,
-        ContentType: "application/json"
-    };
+    Bucket: process.env.S3_BUCKET_NAME,
+    Key: filename,
+    Body: data,
+    ContentType: "application/json",
+    ContentDisposition: "attachment"   // 🔥 THIS IS THE REAL FIX
+};
 
     // Upload file
     await s3.upload(params).promise();

@@ -2,11 +2,26 @@ let currentPage = 1;
 
 let pageSize = localStorage.getItem("pageSize")
     ? parseInt(localStorage.getItem("pageSize"))
-    : 10;
+    : 5;
 
 document.addEventListener("DOMContentLoaded", () => {
 
     const token = localStorage.getItem("token");
+    if (token) {
+    const decoded = JSON.parse(atob(token.split('.')[1]));
+
+    if (decoded.isPremium) {
+        const buyBtn = document.getElementById("buyPremiumBtn");
+        const downloadBtn = document.getElementById("downloadBtn");
+
+        if (buyBtn) buyBtn.style.display = "none";
+
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.innerText = "Download Report";
+        }
+    }
+}
     const form = document.getElementById("expenseForm");
     const list = document.getElementById("expenseList");
 
@@ -16,7 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (status === "success") {
         alert("🎉 Payment Successful! You are now Premium.");
-        window.history.replaceState({}, document.title, "/index.html");
+        localStorage.removeItem("token");   
+        window.location.href = "/index.html";
     }
 
     if (status === "failed") {
@@ -33,29 +49,35 @@ document.addEventListener("DOMContentLoaded", () => {
     // ================= DOWNLOAD BUTTON =================
     const downloadBtn = document.getElementById("downloadBtn");
 
-    if (downloadBtn) {
-        downloadBtn.addEventListener("click", async () => {
-            try {
-                const response = await fetch("/premium/download", {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    alert(data.message);
-                    return;
+if (downloadBtn) {
+    downloadBtn.addEventListener("click", async () => {
+        try {
+            const response = await fetch("/premium/download", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
                 }
+            });
 
-                window.location.href = data.fileURL;
+            const data = await response.json();
 
-            } catch (err) {
-                console.error("Download error:", err);
+            if (!response.ok) {
+                alert(data.message);
+                return;
             }
-        });
-    }
+
+            // 🔥 FORCE DOWNLOAD (FINAL FIX)
+            const a = document.createElement("a");
+            a.href = data.fileURL;
+            a.download = `Expense-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+        } catch (err) {
+            console.error("Download error:", err);
+        }
+    });
+}
 
     // ================= BUY PREMIUM =================
     const buyPremiumBtn = document.getElementById("buyPremiumBtn");
@@ -143,60 +165,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ================= LOAD EXPENSES =================
     async function loadExpenses(page = 1) {
-        try {
-            currentPage = page;
+    try {
+        currentPage = page;
 
-            const response = await fetch(`/expense/get-expenses?page=${page}&limit=${pageSize}`, {
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-
-            list.innerHTML = "";
-
-            data.expenses.forEach(exp => {
-
-                const li = document.createElement("li");
-                li.className = "expense-item";
-
-                li.innerHTML = `
-                    <div>
-                        <strong>₹${exp.amount}</strong> - ${exp.description}
-                        <br>
-                        <small>${exp.category || ""}</small>
-                    </div>
-                    <button class="delete-btn" onclick="deleteExpense(${exp.id})">Delete</button>
-                `;
-
-                list.appendChild(li);
-            });
-
-            createPagination(data.totalPages, data.currentPage);
-
-        } catch (error) {
-            console.log("Error fetching expenses:", error);
-        }
+const response = await fetch(`/expense/get-expenses?page=${page}&limit=5`, {
+    headers: {
+        "Authorization": `Bearer ${token}`
     }
+});
 
+        const data = await response.json();
+
+        const list = document.getElementById("expenseList");
+        list.innerHTML = "";
+
+        data.expenses.forEach(exp => {
+
+            // 🔍 DEBUG (you can remove later)
+            console.log("Expense:", exp);
+
+            const li = document.createElement("li");
+            li.className = "expense-item";
+
+            li.innerHTML = `
+                <div>
+                    <strong>₹${exp.amount}</strong> - ${exp.description}
+                    <br>
+                    <small>${exp.category || ""}</small>
+                </div>
+                <button class="delete-btn" onclick="deleteExpense('${exp._id || exp.id}')">Delete</button>
+            `;
+
+            list.appendChild(li);
+        });
+
+        createPagination(data.totalPages, data.currentPage);
+
+    } catch (error) {
+        console.log("Error fetching expenses:", error);
+    }
+}
     // ================= DELETE =================
     window.deleteExpense = async function (id) {
-        try {
-            await fetch(`/expense/delete-expense/${id}`, {
-                method: "DELETE",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
+    try {
+        console.log("👉 Deleting ID:", id);
 
-            loadExpenses(currentPage);
+        const res = await fetch(`/expense/delete-expense/${id}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
 
-        } catch (error) {
-            console.log("Delete error:", error);
+        const data = await res.json();
+        console.log("👉 Response:", data);
+
+        if (!res.ok) {
+            alert(data.message || "Delete failed");
+            return;
         }
-    };
 
+        loadExpenses(currentPage);
+
+    } catch (error) {
+        console.log("❌ Delete error:", error);
+    }
+};
     // ================= PAGINATION =================
     function createPagination(totalPages, currentPage) {
         const pagination = document.getElementById("pagination");

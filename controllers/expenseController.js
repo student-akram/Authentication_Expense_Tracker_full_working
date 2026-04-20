@@ -1,112 +1,90 @@
+const mongoose = require("mongoose");
 const Expense = require('../models/expense');
-const sequelize = require('../config/database');
 const { categorizeExpense } = require("../services/aiService");
 
 
-// =======================
-// ADD EXPENSE
-// =======================
 
 
 exports.addExpense = async (req, res) => {
   try {
-    const { amount, description } = req.body;
+    const { amount, description, category } = req.body;
 
-    let category;
+    console.log("👉 Incoming:", amount, description, category);
 
-    try {
-      category = await aiService.getCategory(description);
-    } catch (error) {
-      console.log("OpenAI failed. Using fallback logic.");
-      category = "Other";  // 🔥 mandatory fallback
+    // optional AI category fallback
+    let finalCategory = category;
+    if (!category || category === "") {
+      finalCategory = await categorizeExpense(description);
     }
 
     const expense = await Expense.create({
       amount,
       description,
-      category,
-      userId: req.user.id
+      category: finalCategory,
+      userId: req.user._id
     });
 
-    res.status(201).json({ expense });
+    console.log("✅ Saved Expense:", expense);
+
+    res.status(201).json(expense);
 
   } catch (error) {
-    console.log("Add Expense Error:", error);
+    console.log("🔥 Add Expense Error:", error);
     res.status(500).json({ message: "Failed to add expense" });
   }
 };
 
-// =======================
-// GET USER EXPENSES ONLY
-// =======================
 exports.getExpenses = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const limit = 5;   // 🔥 FORCE 5 ALWAYS
 
-    const { count, rows } = await Expense.findAndCountAll({
-      where: { userId: req.user.id },
-      limit: limit,
-      offset: offset,
-      order: [['createdAt', 'DESC']]
+    const skip = (page - 1) * limit;
+
+    const expenses = await Expense.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalExpenses = await Expense.countDocuments({
+      userId: req.user._id
     });
 
     res.status(200).json({
-      expenses: rows,
+      expenses,
       currentPage: page,
-      totalPages: Math.ceil(count / limit),
-      totalExpenses: count
+      totalPages: Math.ceil(totalExpenses / limit)
     });
 
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: "Error fetching expenses" });
   }
 };
 
 
-// =======================
-// DELETE EXPENSE (OWNER ONLY)
-// =======================
+
 exports.deleteExpense = async (req, res) => {
-
-  const t = await sequelize.transaction();
-
   try {
-    const expenseId = req.params.id;
+    const id = req.params.id;
 
-    const expense = await Expense.findOne({
-      where: {
-        id: expenseId,
-        userId: req.user.userId
-      },
-      transaction: t
+    console.log("👉 Delete ID:", id);
+    console.log("👉 User ID:", req.user._id);
+
+    const result = await Expense.deleteOne({
+      _id: new mongoose.Types.ObjectId(id),   // 🔥 FIX HERE
+      userId: req.user._id
     });
 
-    if (!expense) {
-      await t.rollback();
-      return res.status(404).json({
-        message: "Expense not found or not authorized"
-      });
+    console.log("👉 Delete result:", result);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Expense not found" });
     }
 
-    await expense.destroy({ transaction: t });
+    res.json({ message: "Deleted successfully" });
 
-    await t.commit();
-
-    res.status(200).json({
-      message: "Expense deleted successfully"
-    });
-
-  } catch (err) {
-
-    await t.rollback();
-
-    console.log("Delete Expense Error:", err);
-
-    res.status(500).json({
-      message: "Error deleting expense"
-    });
+  } catch (error) {
+    console.log("🔥 Delete Error:", error);
+    res.status(500).json({ message: "Delete failed" });
   }
 };

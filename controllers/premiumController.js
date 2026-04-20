@@ -2,20 +2,16 @@ const Expense = require("../models/expense");
 const { uploadToS3 } = require("../services/s3Service");
 
 exports.downloadReport = async (req, res) => {
-
   if (!req.user.isPremium) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "Not premium" });
   }
 
-  const expenses = await Expense.findAll({
-    where: { userId: req.user.id }
-  });
+  const expenses = await Expense.find({ userId: req.user._id });
 
-  const stringifiedExpenses = JSON.stringify(expenses);
+  const fileURL = await uploadToS3(
+    JSON.stringify(expenses),
+    `Expense-${req.user._id}.json`
+  );
 
-  const filename = `Expense-${req.user.id}-${Date.now()}.json`;
-
-  const fileURL = await uploadToS3(stringifiedExpenses, filename);
-
-  res.status(200).json({ fileURL });
+  res.json({ fileURL });
 };
